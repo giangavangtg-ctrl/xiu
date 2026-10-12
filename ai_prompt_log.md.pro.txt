@@ -1,0 +1,20 @@
+# Nhật ký Tương tác AI (AI Prompt Log)
+
+**Prompt 1: Khám phá "Write Penalty"**
+- *Học viên:* "Giải thích 'Write Penalty' của Index trong MySQL là gì? Tại sao thêm các cột liên tục thay đổi như temperature, humidity vào B-Tree lại làm INSERT chậm đi?"
+- *Kết quả học được:* AI phân tích rằng cấu trúc B-Tree cần được sắp xếp liên tục. Khi nhồi nhét quá nhiều cột to vào Index (Fat Index), kích thước của từng Node trong B-Tree phình to. Khi INSERT, MySQL phải chia tách các trang dữ liệu (Page Split) liên tục để lấy chỗ trống, gây ra hiện tượng Disk I/O ngẫu nhiên tăng đột biến.
+
+**Prompt 2: Tính toán dung lượng Byte (Byte calculation)**
+- *Học viên:* "Tính toán dung lượng byte của các kiểu dữ liệu INT, DATETIME, DECIMAL(5,2), VARCHAR(20) trong MySQL. So sánh kích thước của 1 dòng (row) trên Fat Index (cả 5 cột) và Lean Index (chỉ 2 cột)."
+- *Kết quả học được:*
+  - INT (`sensor_id`): 4 Bytes
+  - DATETIME (`recorded_at`): 5 Bytes (từ MySQL 5.6+)
+  - DECIMAL(5,2) (`temperature`, `humidity`): Khoảng 3 Bytes x 2 = 6 Bytes.
+  - VARCHAR(20) (`status`): Lên tới 21 Bytes.
+  - **Fat Index Payload:** 4 + 5 + 3 + 3 + 21 = ~36 Bytes/dòng.
+  - **Lean Index Payload:** 4 + 5 = 9 Bytes/dòng.
+  => Bằng việc cắt tỉa Index, ta giảm được 75% dung lượng lưu trữ trên cây B-Tree.
+
+**Prompt 3: Phân tích lệnh EXPLAIN**
+- *Học viên:* "Tại sao sau khi xóa Fat Index và dùng Lean Index, lệnh EXPLAIN lại mất đi chữ 'Using index' ở cột Extra, điều đó có nghĩa là lệnh SELECT bị chậm đi không?"
+- *Kết quả học được:* 'Using index' nghĩa là Covering Index (Dữ liệu nằm sẵn trên Index, không cần chọc vào bảng). Khi mất chữ này, MySQL phải thực hiện thêm 1 bước "Lookup" vào bảng chính để lấy dữ liệu. Quá trình này có chậm hơn một chút về lý thuyết, nhưng là sự hy sinh bắt buộc để cứu lấy tốc độ Ghi của toàn hệ thống.
